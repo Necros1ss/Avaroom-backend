@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:5433:5432" # Mở port 5433 ở máy host nếu cần connect trực tiếp
+      - "127.0.0.1:5434:5432" # Mở port 5433 ở máy host nếu cần connect trực tiếp
     networks:
       - avaroom-net
     healthcheck:

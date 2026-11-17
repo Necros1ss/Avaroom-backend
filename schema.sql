@@ -1,6 +1,6 @@
 -- ==========================================
 -- HỆ THỐNG QUẢN LÝ TÌM TRỌ SINH VIÊN - AVAROOM
--- PostgreSQL Schema
+-- PostgreSQL Schema (Full Production Ready)
 -- ==========================================
 
 -- 1. CÁC KIỂU DỮ LIỆU LIỆT KÊ (ENUMS)
@@ -37,7 +37,7 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
-    CREATE TYPE notification_type AS ENUM ('APPOINTMENT', 'ROOM_APPROVAL', 'REPORT_UPDATE', 'SYSTEM_ALERT');
+    CREATE TYPE notification_type AS ENUM ('APPOINTMENT', 'ROOM_APPROVAL', 'REPORT_UPDATE', 'SYSTEM_ALERT', 'CHAT_MESSAGE');
 EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 DO $$ BEGIN
@@ -194,6 +194,15 @@ CREATE TABLE IF NOT EXISTS room_amenities (
     PRIMARY KEY (room_id, amenity_id)
 );
 
+-- Liên kết phòng trọ và trường đại học lân cận kèm khoảng cách tính sẵn (km)
+CREATE TABLE IF NOT EXISTS room_universities (
+    room_id BIGINT NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    university_id BIGINT NOT NULL REFERENCES universities(id) ON DELETE CASCADE,
+    distance_km DOUBLE PRECISION,
+    PRIMARY KEY (room_id, university_id)
+);
+CREATE INDEX IF NOT EXISTS idx_room_universities_uni ON room_universities(university_id);
+
 -- 5. TƯƠNG TÁC SINH VIÊN
 CREATE TABLE IF NOT EXISTS saved_rooms (
     id BIGSERIAL PRIMARY KEY,
@@ -234,7 +243,8 @@ CREATE TABLE IF NOT EXISTS reviews (
     landlord_reply TEXT,
     replied_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_reviews_student_room UNIQUE (room_id, student_id)
 );
 CREATE INDEX IF NOT EXISTS idx_reviews_room ON reviews(room_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_student ON reviews(student_id);
@@ -257,7 +267,49 @@ CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
 CREATE INDEX IF NOT EXISTS idx_reports_room ON reports(reported_room_id);
 CREATE INDEX IF NOT EXISTS idx_reports_user ON reports(reported_user_id);
 
--- 7. THÔNG BÁO & LOGS
+-- 7. TIN NHẮN (CHAT) TRỰC TIẾP GIỮA SINH VIÊN VÀ CHỦ TRỌ
+CREATE TABLE IF NOT EXISTS conversations (
+    id BIGSERIAL PRIMARY KEY,
+    student_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    landlord_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    room_id BIGINT REFERENCES rooms(id) ON DELETE SET NULL,
+    last_message_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_conversation_pair UNIQUE (student_id, landlord_id, room_id)
+);
+CREATE INDEX IF NOT EXISTS idx_conversations_student ON conversations(student_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_landlord ON conversations(landlord_id);
+
+CREATE TABLE IF NOT EXISTS messages (
+    id BIGSERIAL PRIMARY KEY,
+    conversation_id BIGINT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    sender_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    content TEXT NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+
+-- 8. TÌM BẠN Ở GHÉP (ROOMMATE FINDER)
+CREATE TABLE IF NOT EXISTS roommate_posts (
+    id BIGSERIAL PRIMARY KEY,
+    author_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    room_id BIGINT REFERENCES rooms(id) ON DELETE SET NULL,
+    university_id BIGINT REFERENCES universities(id) ON DELETE SET NULL,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    budget_max DECIMAL(12, 2),
+    gender_preference VARCHAR(20) DEFAULT 'ANY',
+    status VARCHAR(50) DEFAULT 'OPEN',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_roommate_posts_author ON roommate_posts(author_id);
+CREATE INDEX IF NOT EXISTS idx_roommate_posts_uni ON roommate_posts(university_id);
+
+-- 9. THÔNG BÁO & LOGS
 CREATE TABLE IF NOT EXISTS notifications (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
