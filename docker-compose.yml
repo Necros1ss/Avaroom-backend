@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: avaroom-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-avaroom}
+      POSTGRES_USER: ${POSTGRES_USER:-avaroom_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432" # Mở port 5433 ở máy host nếu cần connect trực tiếp
+    networks:
+      - avaroom-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-avaroom_user} -d ${POSTGRES_DB:-avaroom}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: avaroom-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-avaroom_user}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-avaroom}
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET}
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - avaroom-net
+
+networks:
+  avaroom-net:
+    driver: bridge
+
+volumes:
+  postgres_data:

@@ -7,12 +7,7 @@ if (env.DATABASE_URL) {
   sequelize = new Sequelize(env.DATABASE_URL, {
     dialect: 'postgres',
     logging: env.NODE_ENV === 'development' ? console.log : false,
-    dialectOptions: env.NODE_ENV === 'production' ? {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false,
-      },
-    } : {},
+    dialectOptions: {},
   });
 } else {
   sequelize = new Sequelize(env.DB_NAME, env.DB_USER, env.DB_PASSWORD, {
