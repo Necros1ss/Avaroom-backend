@@ -13,10 +13,10 @@ const landlordRoutes = require('./routes/landlord.routes');
 const roomRoutes = require('./routes/room.routes');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Tin tưởng proxy (Nginx Reverse Proxy chuyển tiếp request từ port 80 -> 3000)
 // Giúp express-rate-limit nhận diện đúng IP client qua X-Forwarded-For
-app.set('trust proxy', 1);
 
 // Middleware
 app.use(helmet());
