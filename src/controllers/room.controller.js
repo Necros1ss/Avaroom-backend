@@ -377,6 +377,7 @@ const getMyRooms = async (req, res, next) => {
 };
 
 module.exports = {
+  formatRoomForApp,
   getRooms,
   getRoomById,
   createRoom,

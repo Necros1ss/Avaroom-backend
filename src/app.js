@@ -11,6 +11,7 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth.routes');
 const landlordRoutes = require('./routes/landlord.routes');
 const roomRoutes = require('./routes/room.routes');
+const studentRoutes = require('./routes/student.routes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -46,6 +47,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/landlord', landlordRoutes);
 app.use('/api/rooms', roomRoutes);
+app.use('/api/student', studentRoutes);
 
 // Error handlers
 app.use(notFound);
